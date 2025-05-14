@@ -1,7 +1,6 @@
 {
   "name": "register-consultation-api",
   "version": "1.0.0",
--  "type": "module",
   "dependencies": {
     "googleapis": "^121.0.0",
     "axios": "^1.4.0"
