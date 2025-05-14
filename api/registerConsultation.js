@@ -1,16 +1,14 @@
-// api/registerConsultation.js
+// api/registerConsultation.js (CommonJS)
 const { google } = require('googleapis');
-const axios = require('axios');
+const axios        = require('axios');
 
 module.exports = async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
       return res.status(405).json({ error: 'Method Not Allowed' });
     }
-
     const { questionerName, genre, query } = req.body;
 
-    // — Google Sheets API 認証・書き込み —
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
@@ -20,15 +18,14 @@ module.exports = async function handler(req, res) {
       spreadsheetId: process.env.SPREADSHEET_ID,
       range: 'Sheet1',
       valueInputOption: 'RAW',
-      requestBody: {
-        values: [[new Date().toISOString(), questionerName, genre, query]]
-      }
+      requestBody: { values: [[ new Date().toISOString(), questionerName, genre, query ]] }
     });
 
-    // — ChatWork API に通知 —
     await axios.post(
       `https://api.chatwork.com/v2/rooms/${process.env.CHATWORK_ROOM_ID}/messages`,
-      new URLSearchParams({ body: `${questionerName}さんから相談が届きました: ${query.substring(0,50)}…` }),
+      new URLSearchParams({
+        body: `${questionerName}さんの相談が届きました: ${query.substring(0,50)}…`
+      }),
       { headers: { 'X-ChatWorkToken': process.env.CHATWORK_TOKEN } }
     );
 
