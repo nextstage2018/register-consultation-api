@@ -1,6 +1,6 @@
-// api/registerConsultation.js (CommonJS)
+// api/registerConsultation.js
 const { google } = require('googleapis');
-const axios        = require('axios');
+const axios      = require('axios');
 
 module.exports = async function handler(req, res) {
   try {
@@ -9,6 +9,7 @@ module.exports = async function handler(req, res) {
     }
     const { questionerName, genre, query } = req.body;
 
+    // — Google Sheets API 認証・書き込み —
     const auth = new google.auth.GoogleAuth({
       credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON),
       scopes: ['https://www.googleapis.com/auth/spreadsheets']
@@ -18,20 +19,34 @@ module.exports = async function handler(req, res) {
       spreadsheetId: process.env.SPREADSHEET_ID,
       range: 'Sheet1',
       valueInputOption: 'RAW',
-      requestBody: { values: [[ new Date().toISOString(), questionerName, genre, query ]] }
+      requestBody: {
+        values: [
+          [ new Date().toISOString(), questionerName, genre, query ]
+        ]
+      }
     });
+
+    // — ChatWork API に通知 —
+    // URLSearchParams を toString() してフォームデータ文字列に、
+    // ヘッダーで明示的に x-www-form-urlencoded を指定します。
+    const formBody = new URLSearchParams({ 
+      body: `${questionerName}さんの相談が届きました: ${query.substring(0,50)}…`
+    }).toString();
 
     await axios.post(
       `https://api.chatwork.com/v2/rooms/${process.env.CHATWORK_ROOM_ID}/messages`,
-      new URLSearchParams({
-        body: `${questionerName}さんの相談が届きました: ${query.substring(0,50)}…`
-      }),
-      { headers: { 'X-ChatWorkToken': process.env.CHATWORK_TOKEN } }
+      formBody,
+      {
+        headers: {
+          'X-ChatWorkToken': process.env.CHATWORK_TOKEN,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
     );
 
     return res.status(200).json({ status: 'success' });
   } catch (err) {
     console.error('Handler error:', err);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message || err.toString() });
   }
 };
